@@ -1,4 +1,21 @@
-# cartoonizer_flask_webapp
 
-In this project we have build a Inage Stylization and Cartoonizer web app in Flask using Python and OpenCV. You only have to upload image you want to stylize and
-select from the styles (Image enhancement, cartoon effect, pencil sketch, color pencil sketch, water color, pastel color) for transforming your image.
+
+In this project I have build a Image Filtering and Transformation  web app in Flask using Python and OpenCV. 
+
+
+
+
+
+All the backend routes are in app.py and unit test cases are in test_app.py
+
+Setup-Instruction
+
+1)Install Python
+
+2)Create a Virtual Environment 
+
+3)Install Required Packages - pip install -r requirements.txt
+
+4)Running the Flask Application: -  python app.py
+
+5)Running the Flask Application: -  python test_app.py  make sure flask app is also running
