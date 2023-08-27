@@ -1,0 +1,367 @@
+{% extends "base.html" %}
+{% block content %}
+
+<h2></h2>
+
+<div>
+    <form id="upload-file" action="/predict" method="POST" enctype="multipart/form-data">
+        <center>
+            {% for message in get_flashed_messages() %}
+                <div class="alert alert-danger alert-dismissible fade show" role="alert">
+                    {{ message }}
+                    <button type="button" class="close" data-dismiss="alert" aria-label="Close">
+                        <span aria-hidden="true">×</span>
+                    </button>
+                </div>
+            {% endfor %}
+        </center>
+
+        <div class="card">
+            <div class="card-header">
+                <h4>Image Filterting and Transformation </h4>
+            </div>
+            <div class="card-body">
+                <h5 class="card-title">Browse Image</h5>
+                <div class="upload-section">
+                    <input type="file" id="file" name="file" required>
+                    <div class="uploaded-image-container" style="margin-bottom:20px">
+                        <img id="uploaded-image" src="#" alt="Uploaded Image">
+                    </div>
+                </div>
+                <p>
+                    <label class="my-1 mr-2"  for="num_tasks">Number of tasks </label>
+                    <input type="number" id="num_tasks" name="num_tasks" min="1" max="10" required>
+                </p>
+                <div id="task_filters" style="display: none;">
+                    <!-- Dynamic content will be added here -->
+                </div>
+                <input type="submit" class="btn btn-primary" name="submit" value="Apply Changes"style="margin-top:10px" >
+            </div>
+        </div>
+    </form>
+
+    
+
+    <div class="loader" style="display: none;"></div>
+    <h3 id="result">
+        <span></span>
+    </h3>
+</div>
+
+<div id="predict-content"></div>
+
+<script>
+    document.getElementById('num_tasks').addEventListener('input', function () {
+        var numTasks = parseInt(this.value);
+        var taskFiltersDiv = document.getElementById('task_filters');
+        taskFiltersDiv.innerHTML = ''; // Clear previous content
+
+        for (var i = 1; i <= numTasks; i++) {
+            var select = document.createElement('select');
+            select.name = 'style_task_' + i;
+            select.className = 'custom-select my-1 mr-sm-2';
+            select.innerHTML = `
+                <option value="default">Choose...</option>
+                <option value="Style6">Rotate 180 degrees</option>
+                <option value="Style7">Rotate 90 degrees clockwise</option>
+                <option value="Style8">Rotate 90 degrees anticlockwise</option>
+                <option value="Style9">Resize image</option>
+                <option value="Style10">Crop image</option>
+                <option value="Style2">Grey Conversion</option>
+                <option value="Style5">Brightness Adjustment</option>
+                <option value="Style3">Blur</option>
+                <option value="Style4">Edge Detection</option>
+            `;
+            taskFiltersDiv.appendChild(select);
+
+            // Add event listener to display contrast and brightness text boxes
+            select.addEventListener('change', function () {
+
+                var existingInputs = taskFiltersDiv.querySelectorAll(`input[name^="${this.name}"]`);
+            existingInputs.forEach(function (input) {
+                input.previousSibling.remove(); // Remove label
+                input.remove(); // Remove input
+    });
+                if (this.value === 'Style5') {
+                    var contrastLabel = document.createElement('label');
+                    contrastLabel.className = 'my-1 mr-2';
+                    contrastLabel.innerHTML = 'Contrast Value';
+                    taskFiltersDiv.insertBefore(contrastLabel, this.nextSibling);
+
+                    var contrastInput = document.createElement('input');
+                    contrastInput.type = 'number';
+                    contrastInput.name = `${this.name}_contrast_value`;
+                    contrastInput.style.marginRight = '20px';
+                    taskFiltersDiv.insertBefore(contrastInput, this.nextSibling.nextSibling);
+
+                    var brightnessLabel = document.createElement('label');
+                    brightnessLabel.className = 'my-1 mr-2';
+                    brightnessLabel.innerHTML = 'Brightness Value';
+                    taskFiltersDiv.insertBefore(brightnessLabel, this.nextSibling.nextSibling.nextSibling);
+
+                    var brightnessInput = document.createElement('input');
+                    brightnessInput.type = 'number';
+                    brightnessInput.name = `${this.name}_brightness_value`;
+                    taskFiltersDiv.insertBefore(brightnessInput, this.nextSibling.nextSibling.nextSibling.nextSibling);
+                } 
+
+                else if (this.value === 'Style9') {
+                    var hLabel = document.createElement('label');
+                    hLabel.className = 'my-1 mr-2';
+                    hLabel.innerHTML = 'Height';
+                    taskFiltersDiv.insertBefore(hLabel, this.nextSibling);
+
+                    var hInput = document.createElement('input');
+                    hInput.type = 'number';
+                    hInput.name = `${this.name}_h_value`;
+                    hInput.style.marginRight = '20px';
+                    taskFiltersDiv.insertBefore(hInput, this.nextSibling.nextSibling);
+
+                    var wLabel = document.createElement('label');
+                    wLabel.className = 'my-1 mr-2';
+                    wLabel.innerHTML = 'Width';
+                    taskFiltersDiv.insertBefore(wLabel, this.nextSibling.nextSibling.nextSibling);
+
+                    var wInput = document.createElement('input');
+                    wInput.type = 'number';
+                    wInput.name = `${this.name}_w_value`;
+                    taskFiltersDiv.insertBefore(wInput, this.nextSibling.nextSibling.nextSibling.nextSibling);
+                } 
+
+                else if (this.value === 'Style10') {
+    // Create a div element for the Vertical Height label and input field
+    var vhDiv = document.createElement('div');
+    vhDiv.style.display = 'inline-block';
+    taskFiltersDiv.appendChild(vhDiv);
+
+    var vhLabel = document.createElement('label');
+    vhLabel.className = 'my-1 mr-2';
+    vhLabel.innerHTML = 'Vertical Height';
+    vhDiv.appendChild(vhLabel);
+
+    var vhInput = document.createElement('input');
+    vhInput.type = 'number';
+    vhInput.style.marginRight = '20px';
+    vhInput.style.marginBottom = '20px';
+    vhInput.name = `${this.name}_vh_value`;
+    vhDiv.appendChild(vhInput);
+
+    // Create a div element for the Horizontal Height label and input field
+    var hhDiv = document.createElement('div');
+    hhDiv.style.display = 'inline-block';
+    taskFiltersDiv.appendChild(hhDiv);
+
+    var hhLabel = document.createElement('label');
+    hhLabel.className = 'my-1 mr-2';
+    hhLabel.innerHTML = 'Horizontal Height';
+    hhDiv.appendChild(hhLabel);
+
+    var hhInput = document.createElement('input');
+    hhInput.type = 'number';
+    hhInput.style.marginBottom = '20px';
+    hhInput.name = `${this.name}_hh_value`;
+    hhDiv.appendChild(hhInput);
+
+    // Create a line break
+    taskFiltersDiv.appendChild(document.createElement('br'));
+
+    // Create a div element for the Vertical Width label and input field
+    var vwDiv = document.createElement('div');
+    vwDiv.style.display = 'inline-block';
+    taskFiltersDiv.appendChild(vwDiv);
+
+    var vwLabel = document.createElement('label');
+    vwLabel.className = 'my-1 mr-2';
+    vwLabel.innerHTML = 'Vertical Width';
+    vwDiv.appendChild(vwLabel);
+
+    var vwInput = document.createElement('input');
+    vwInput.type = 'number';
+    vwInput.style.marginRight = '20px';
+    vwInput.name = `${this.name}_vw_value`;
+    vwDiv.appendChild(vwInput);
+
+    // Create a div element for the Horizontal Width label and input field
+    var hwDiv = document.createElement('div');
+    hwDiv.style.display = 'inline-block';
+    taskFiltersDiv.appendChild(hwDiv);
+
+    var hwLabel = document.createElement('label');
+    hwLabel.className = 'my-1 mr-2';
+    hwLabel.innerHTML = 'Horizontal Width';
+    hwDiv.appendChild(hwLabel);
+
+    var hwInput = document.createElement('input');
+    hwInput.type = 'number';
+    hwInput.name = `${this.name}_hw_value`;
+    hwDiv.appendChild(hwInput);
+}
+
+            });
+        }
+
+        taskFiltersDiv.style.display = numTasks > 0 ? 'block' : 'none';
+    });
+
+    
+
+    document.getElementById('upload-file').addEventListener('submit', function (event) {
+        var fileInput = document.getElementById('file');
+        var file = fileInput.files[0];
+
+        if (!isFileTypeValid(file)) {
+            event.preventDefault(); // Prevent form submission
+            alert('Only JPEG and PNG file types are allowed.');
+            return;
+        }
+
+       
+        var taskSelects = document.querySelectorAll('[name^="style_task_"]');
+        var tasksSelected = true;
+        var resizeImageSelected = false;
+        var cropImageSelected = false;
+        var brightnessAdjustmentSelected = false;
+
+        taskSelects.forEach(function (select) {
+            if (select.value === 'default') {
+                tasksSelected = false;
+            } else if (select.value === 'Style9') {
+                resizeImageSelected = true;
+            } else if (select.value === 'Style10') {
+                cropImageSelected = true;
+            } else if (select.value === 'Style5') {
+                brightnessAdjustmentSelected = true;
+            }
+        });
+
+        if (!tasksSelected) {
+            event.preventDefault(); // Prevent form submission
+            alert('Please select a task for each style.');
+            return;
+        }
+
+        // If "Resize image" is selected, check height and width fields
+        if (resizeImageSelected) {
+            var hInput = document.querySelector(`input[name$="_h_value"]`);
+            var wInput = document.querySelector(`input[name$="_h_value"]`);
+            var hValue = parseFloat(hInput.value);
+            var wValue = parseFloat(wInput.value);
+
+            if (isNaN(hValue) || isNaN(wValue) || hValue > 1000 || hValue <= 0 || wValue <= 0 || wValue > 1000) {
+                event.preventDefault(); // Prevent form submission
+                alert('Please enter valid values for height and width.');
+                return;
+            }
+        }
+
+        // If "Crop image" is selected, check all crop fields
+        if (cropImageSelected) {
+    var vhInput = document.querySelector(`input[name$="_vh_value"]`);
+    var hhInput = document.querySelector(`input[name$="_hh_value"]`);
+    var vwInput = document.querySelector(`input[name$="_vw_value"]`);
+    var hwInput = document.querySelector(`input[name$="_hw_value"]`);
+    var vhValue = parseFloat(vhInput.value);
+    var hhValue = parseFloat(hhInput.value);
+    var vwValue = parseFloat(vwInput.value);
+    var hwValue = parseFloat(hwInput.value);
+
+    // Get the dimensions of the image
+    var img = document.getElementById('uploaded-image');
+    var imgWidth = img.naturalWidth;
+    var imgHeight = img.naturalHeight;
+
+    // Check if the entered values are within the dimensions of the image
+    if (isNaN(vhValue) || isNaN(hhValue) || isNaN(vwValue) || isNaN(hwValue) ||
+        vhValue < 0 || hhValue < 0 || vwValue < 0 || hwValue < 0 ||
+        vhValue >= imgHeight || hhValue > imgHeight ||
+        vwValue >= imgWidth || hwValue > imgWidth) {
+        event.preventDefault(); // Prevent form submission
+        alert('Please enter valid values for crop dimensions.');
+        return;
+    }
+}
+
+
+        // If "Brightness Adjustment" is selected, check both brightness and contrast
+        if (brightnessAdjustmentSelected) {
+            var brightnessInput = document.querySelector(`input[name$="_brightness_value"]`);
+            var contrastInput = document.querySelector(`input[name$="_contrast_value"]`);
+            var brightnessValue = parseFloat(brightnessInput.value);
+            var contrastValue = parseFloat(contrastInput.value);
+
+            if (isNaN(brightnessValue) ||  brightnessValue > 10  || contrastValue > 10  || isNaN(contrastValue)) {
+                event.preventDefault(); // Prevent form submission
+                alert('Please enter valid values for brightness and contrast.');
+                return;
+            }
+        }
+
+        
+    });
+
+
+    // Function to check if the file type is valid (JPEG or PNG)
+    function isFileTypeValid(file) {
+        if (!file) {
+            return false;
+        }
+
+        var allowedTypes = ['image/jpeg', 'image/png'];
+        return allowedTypes.includes(file.type);
+    }
+
+    document.getElementById('file').addEventListener('change', function () {
+        var fileInput = this;
+        var uploadedImage = document.getElementById('uploaded-image');
+
+        if (fileInput.files && fileInput.files[0]) {
+            var reader = new FileReader();
+            reader.onload = function (e) {
+                uploadedImage.src = e.target.result;
+            };
+            reader.readAsDataURL(fileInput.files[0]);
+        }
+    });
+
+    document.addEventListener("submit", function(event) {
+        if (event.target.matches("#upload-file")) {
+            event.preventDefault();
+            var xhr = new XMLHttpRequest();
+            xhr.open("POST", "/predict");
+            xhr.onload = function() {
+                if (xhr.status === 200) {
+                    var predictContentElement = document.querySelector("#predict-content");
+                    predictContentElement.innerHTML = xhr.responseText;
+                    predictContentElement.scrollIntoView({ behavior: "smooth" });
+                    Array.from(event.target.elements).forEach(function(element) {
+                        element.disabled = true;
+                    });    
+                } else {
+                    alert('Error has occured');
+                }
+            };
+            xhr.send(new FormData(event.target));
+        }
+    });
+</script>
+
+<style>
+
+    .uploaded-image-container {
+        max-width: 400px; /* Adjust the width as needed */
+        max-height: 400px; /* Adjust the height as needed */
+        margin-top: 10px;
+        border: 1px solid #ccc;
+        padding: 10px;
+        text-align: center;
+    }
+    
+    #uploaded-image {
+        max-width: 100%;
+        max-height: 100%;
+    }
+    
+    </style>
+    
+
+{% endblock %}
